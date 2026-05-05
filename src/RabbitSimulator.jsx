@@ -140,6 +140,7 @@ const STORY_FRAMES = {
 // --- MAIN APP COMPONENT ---
 export default function RabbitSimulator() {
   const [started, setStarted] = useState(false);
+  const [hasSpeechSupport, setHasSpeechSupport] = useState(true);
   const [gameState, setGameState] = useState('idle'); // idle, reading_story, stage1, stage2, stage3, ask_question, listening_choice
   const [currentFrame, setCurrentFrame] = useState(STORY_FRAMES.start);
   const [history, setHistory] = useState([]);
@@ -148,6 +149,7 @@ export default function RabbitSimulator() {
   const [attempts, setAttempts] = useState(0);
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [rabbitAnim, setRabbitAnim] = useState('rabbit_idle');
+  const [chatInput, setChatInput] = useState('');
 
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
@@ -164,6 +166,7 @@ export default function RabbitSimulator() {
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
+      setHasSpeechSupport(true);
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.lang = 'de-DE';
@@ -183,6 +186,9 @@ export default function RabbitSimulator() {
       };
 
       recognitionRef.current = recognition;
+    } else {
+      setHasSpeechSupport(false);
+      console.warn('Speech Recognition API not supported in this browser.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -277,10 +283,12 @@ export default function RabbitSimulator() {
     });
   };
 
-  const handleVoiceInput = (transcript) => {
+  const handleVoiceInput = (rawTranscript) => {
+    let transcript = rawTranscript;
     const frame = currentFrameRef.current;
     const state = gameStateRef.current;
-    const targetWord = frame.focusWord.toLowerCase();
+    const targetWord = frame.focusWord.toLowerCase().replace(/[.,!?;:]/g, '');
+    transcript = transcript.replace(/[.,!?;:]/g, '');
 
     if (state === 'stage2') {
       if (transcript.includes(targetWord) || transcript.length > 2) {
@@ -438,6 +446,31 @@ export default function RabbitSimulator() {
               <div className="h-[40%] bg-gradient-to-b from-neutral-900 to-black relative flex items-end justify-center pb-8 px-4">
 
                 {/* Feedback Toast */}
+                {!hasSpeechSupport && ['stage2', 'stage3', 'listening_choice'].includes(gameState) && (
+                  <div className="absolute top-12 left-0 w-full flex justify-center px-4 z-10">
+                    <form
+                      className="w-full flex space-x-1"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if(chatInput.trim()) {
+                          handleVoiceInput(chatInput);
+                          setChatInput('');
+                        }
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Antwort tippen..."
+                        className="flex-1 bg-black text-white text-[8px] px-2 py-1 rounded border border-neutral-700 outline-none focus:border-[#ff4d00]"
+                      />
+                      <button type="submit" className="bg-[#ff4d00] text-white text-[8px] py-1 px-2 rounded">
+                        Senden
+                      </button>
+                    </form>
+                  </div>
+                )}
                 {feedbackMsg && (
                   <div className="absolute top-4 left-0 w-full text-center text-[10px] text-white animate-bounce"
                     style={{ filter: 'drop-shadow(0 0 5px #fff)' }}
