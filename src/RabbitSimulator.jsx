@@ -188,7 +188,6 @@ export default function RabbitSimulator() {
       recognitionRef.current = recognition;
     } else {
       setHasSpeechSupport(false);
-      console.warn('Speech Recognition API not supported in this browser.');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
